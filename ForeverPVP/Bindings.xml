@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="FOREVERPVP_REPORT" header="FOREVERPVP">
+        if ForeverPVP and ForeverPVP.Report then ForeverPVP.Report() end
+    </Binding>
+</Bindings>
