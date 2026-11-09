@@ -1,0 +1,38 @@
+CALL TO ARMS RENAME - November 9, 2026
+
+Release 0.3.0-alpha changes addon identity, not the version-1 message contract.
+
+Current identifiers:
+  Install folder: CallToArms
+  Manifest: CallToArms.toc
+  Public API: CallToArms.Report / CallToArms.Receive / CallToArms.SetTransport
+  SavedVariables: CallToArmsDB
+  Binding: CALLTOARMS_REPORT, header CALLTOARMS
+  Named frames: CallToArmsPanel, CallToArmsComposer, CallToArmsDetails
+  Commands: /cta, /cta report, /cta demo, /cta clear, /cta ruleset pvp
+
+Fresh installation (the intended current workflow):
+Copy the inner CallToArms folder to _forever_/Interface/AddOns/CallToArms.
+The TOC must be at AddOns/CallToArms/CallToArms.toc. Restart the client.
+No settings migration is needed if the earlier alpha was never installed.
+
+Existing alpha installation:
+Fully exit WoW. Back up the old addon and account SavedVariables files first.
+Disable/remove the old ForeverPVP addon from the active AddOns directory so
+both versions do not register /cta. Install CallToArms.
+To preserve settings, copy WTF/Account/<account>/SavedVariables/ForeverPVP.lua
+to that same directory as CallToArms.lua and change the top-level assignment
+from ForeverPVPDB = to CallToArmsDB =. Keep the original backup untouched.
+Only ruleset, muted and lastSubmit are meaningful settings; reports are transient.
+Do not edit saved settings while WoW is running; the client may overwrite them.
+Rebind 'Call to Arms > Report PvP at my location' in Key Bindings. Existing
+/cta report macros keep working. Replace old /fwp macros with /cta.
+
+No implicit cross-addon settings import is attempted: a renamed addon does not
+automatically load the previous addon's account SavedVariables file. These
+instructions preserve settings without requiring the old addon to run alongside
+the new one. Old binding names and Lua global aliases are not registered.
+
+Adapter authors: replace ForeverPVP.* references with CallToArms.*.
+Old release ZIPs are kept in releases/legacy/ for history and are not the current
+installation package. Use releases/CallToArms-0.3.0-alpha.zip.

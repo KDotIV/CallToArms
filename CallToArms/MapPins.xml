@@ -1,0 +1,5 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Frame name="CallToArmsMapPinTemplate" virtual="true" enableMouse="true" mixin="CallToArmsMapPinMixin">
+        <Size x="28" y="28"/>
+    </Frame>
+</Ui>

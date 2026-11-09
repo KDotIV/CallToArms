@@ -1,340 +1,255 @@
-CALL TO ARMS - BACKEND HANDOFF
-Prepared November 6, 2026 | Frontend 0.2.0-alpha | Lua boundary version 1
+CALL TO ARMS - BACKEND AND ADDON HANDOFF
+Current main addon: 0.4.4-alpha | Diagnostics: 0.3.0 | November 9, 2026
 
-1. CURRENT STATE AND REPOSITORY
+1. CURRENT DECISION
+
+Ship and validate in-game guild reports first. /cta report uses
+C_ChatInfo.SendAddonMessage on GUILD and receives through CHAT_MSG_ADDON.
+No external service is needed for this path. There is no active Discord, C#
+relay, bot, webhook, HTTP or WebSocket connection in the addon/repository.
+C# / ASP.NET Core remains the recommended language for a future service, based
+on owner proficiency. A service alone cannot connect to WoW's sandboxed Lua.
+Do not begin backend delivery work assuming an external bridge already exists.
 
 Repository: C:\Users\Brwnber\source\repos\CallToArms
-The user renamed the repository folder from ForeverPVP to CallToArms.
-The installable addon is still ForeverPVP/ with ForeverPVP.toc; the Lua global
-is ForeverPVP and SavedVariables is ForeverPVPDB. These identifiers have NOT
-been migrated. Install the inner ForeverPVP folder, not the repository root.
-The primary command is /cta report; /fwp opens the activity panel.
+Installable main addon: CallToArms/; separate diagnostics: probes/CallToArmsProbe/.
+Target interface: 16001. Observed live client: 1.60.1, build 70862.
+Current evidence: docs/GUILD_REPORT_RESULTS_2026-11-09.txt and probes/RESULTS.txt.
+Next acceptance checks: docs/PRE_LAYER_TEST_CHECKLIST.txt.
+Reproduction instructions: docs/GUILD_REPORT_TEST.txt.
 
-This is a frontend alpha, not a connected service. No backend, authentication,
-live transport, guild registration, Discord bot or automatic PvP combat detector
-has been implemented. The approved interactive preview simulates delivery.
-It is not a WoW screenshot or proof of in-game compatibility.
+2. VERIFIED, WITH LIMITS
 
-Source map:
-  ForeverPVP/Report.lua         One-action reporting and bounded unit snapshot
-  ForeverPVP/Notifications.lua Top-right toast and full report details
-  ForeverPVP/Model.lua          Validation, audience checks, bounded alert store
-  ForeverPVP/Map.lua            Blizzard world-map overlay and coordinates
-  ForeverPVP/UI.lua             Activity list, filters, legacy composer
-  ForeverPVP/Core.lua           Lifecycle, adapter boundary, commands, throttles
-  ForeverPVP/Bindings.xml       Report keybinding
-  ForeverPVP/ForeverPVP.toc      File load order, interface 16001
-  tests/test_addon.py           Model and submission tests using Lua 5.1
-  tests/test_reporting.py       Snapshot and one-action-report tests
-  releases/                    Local ZIPs, excluded from Git
+* Standalone probe: two guildmates exchanged messages in both directions in
+  different zones. Each also sent during actual PvE combat with remote receipt.
+  This does not prove receipt during combat on the receiving client, actual
+  player-versus-player combat, or combat compatibility of the richer report UI.
+* Main addon: accepted sends, remote report receipt and report details were
+  observed. Details included reporter, zone/coordinates, detected rppvp scope,
+  Layer: unknown, four simulated participants and observed/synthetic disclosure.
+* Map pins: user screenshots confirm visible demo pins and a purple TEST pin
+  after the 0.4.4-alpha fix. The final TEST screenshot is a local-origin report;
+  a fresh remote-origin pin on 0.4.4 in BOTH directions remains to be captured.
+* Top-right toast positioning, click/dismiss lifecycle, actual keybinding use,
+  expiry and cooldown behavior still need explicit live acceptance checks.
+* RP-PvP scope was detected on the tested clients. Other rulesets, region/faction
+  mismatch rejection and missing-API behavior have offline coverage, not a full
+  live audience-isolation matrix. Different zones do not prove different layers.
+* Offline Lua 5.1 checks passed for model/reporting/identity and two mocked clients,
+  including the corrected map layer ordering. Mocks do not prove client rendering.
 
-2. AGREED PRODUCT REQUIREMENTS
+The earlier blocked-action popup occurred on /ctaprobe status in the probe that
+called a restricted Discord status API. Discord calls were removed; subsequent
+guild-message tests reported no popup. addonOutgoingRestricted=true coexisted
+with successful remote receipt; it must not alone be interpreted as send failure.
 
-World PvP heat:
-* Four distinct players actually participating in local PvP qualify, in ANY
-  combination, including 3 versus 1. Pets do not count as extra players.
-* Reports originate from local observers or addon-equipped participants.
-  No worldwide scan and no promise of coverage without a nearby reporter.
-* The reporter's faction receives the intelligence. Route separately by region,
-  ruleset and faction; account for layer/phase uncertainty when applicable.
-* Flagged players nearby are evidence of presence, not proof of combat.
-* Duel exclusion is intentionally deferred beyond the MVP.
+Snapshot experiment: preinstalled unused load-on-demand slot 02 read LIVE_02_A
+on first load. Rewriting that already-loaded slot did not refresh it; executions
+stayed at one. This supports finite first-load snapshots on the tested client,
+not a reusable stream, arbitrary file polling or a two-way backend bridge.
+Experiment is closed. Exact markers/times/hashes: probes/SNAPSHOT_RESULTS_2026-11-09.txt.
 
-Call to Arms:
-* Registered guilds/Discord communities in the same ruleset can organize CTAs.
-  Guild raid creation must be limited to authorized organizers.
-* ANY addon user may issue an observer/defensive report, without a guild role.
-* /cta report is one action, macroable and keybindable. No form or confirmation
-  is required. Report the observer's current zone and coordinates immediately.
-* Request a best-effort snapshot of PvP-flagged players within 100 yards.
-  Be explicit about incomplete coverage and unknown distances.
-* Opposing guild/group attribution is optional and must be labeled reported,
-  not presented as authoritative identification.
+3. MAP PIN FIX - RESOLVED IN THE LIVE CLIENT
 
-Cities:
-* Suppress automatic city heat by default.
-* A guild-created city-raid CTA can enable a temporary city exception once the
-  raid becomes active. A scheduled invitation alone must not generate heat.
-* Example: Horde Stormwind invitation goes only to Horde. Minimal ACTIVE city
-  status may be shared with both factions: city, event ID, active window.
-* Alliance heat still requires fresh Alliance observer/participant evidence.
-  Never expose Horde invitation details, rally location or private organizer
-  data in the shared city status. Alliance users may issue defensive CTAs.
-* Expire the exception when the raid ends or activity becomes stale.
+Report positions and hover targets existed while pin artwork was invisible.
+Changing textures, bundling a TGA and moving to native line artwork did not fix
+the map visibility. /cta pincheck showed the same line swords outside the map.
+The native MapCanvas DEFAULT layer sits below exploration/fog overlays on this
+client. Setting a large numeric level (2000) did not put the pins above them.
 
-Map and performance:
-* Use Blizzard's native world map with a small isolated overlay module.
-* Keep domain records independent of the renderer for future layers/history.
-* Backend owns expensive aggregation and cross-user coordination.
-* No bundled libraries, terrain engine, animation or per-frame polling.
+Map.lua now uses the managed PIN_FRAME_LEVEL_AREA_POI layer through
+MapCanvasPinMixin. Blizzard's frame-level manager places it above exploration
+and fog. Pin pooling, normalized positions and mouse handlers stay native.
+The regression test asserts relative ordering above those overlays.
+Artwork uses six foreground line strokes plus outlines; the old bundled TGA is
+not used by the current renderer. No new asset download is needed for this fix.
+Pins appear on their matching zone map; continent/world aggregation is not built.
+Details and tooltips remain attached to the same report. See MAP_PIN_FIX_0.4.4.txt.
 
-3. IMPLEMENTED UX AND LIMITS
+4. CURRENT USER FLOW AND BOUNDS
 
-/cta report and the Report PvP keybinding capture a report without opening UI.
-Without a transport adapter, this produces a labeled local preview only.
-With an adapter, successful submission says 'awaiting delivery confirmation'.
-An adapter accepting a request is not proof that recipients received it.
+/cta report, CallToArms.Report(), and binding CALLTOARMS_REPORT invoke the same
+one-action report. Binding label: Call to Arms -> Report PvP at my location.
+A macro containing /cta report also works through an action-bar binding.
+The report anchors to the OBSERVER'S current map and coordinates, not an exact
+enemy location or computed battle center. There is no confirmation form.
 
-New non-heat records can display a 300x88 toast near the top-right, 30px from
-the right and 180px down. It lasts ten seconds. Left-click opens report details;
-right-click dismisses. No audio. Details show location, reporter, unknown or
-reported count, optional opposition, note, expiry, and Show on map.
-The activity list retains reports after the toast disappears. Report records
-appear under All and Defense. Row/map-pin clicks also open details.
+Normal report: kind=report, unknown fight size. A partial flagged-player sample
+does not establish PvP combat. Test mode: /cta test on on BOTH clients, session
+only, resets off on reload/login; [TEST] label and purple pin. It includes the
+reporter and accessible unflagged players, then fills the simulated count to
+four when needed. Synthetic counts never identify fictitious real characters.
+Simulation does not change actual PvP/combat flags or emit fake combat events.
+/cta demo is local only; /cta test off removes test records and their UI.
 
-Client safeguards currently implemented:
-* 120-second persisted cooldown after an accepted live report/defensive request.
-* Five-second debounce for /cta report attempts, including failures/previews.
-* At most one toast every 30 seconds. Suppressed toasts are NOT queued; the
-  corresponding records still appear in the list/map.
-* Same-ID updates do not trigger another toast. Heat records are silent.
-* Mute affects notifications, not the list or map.
-* At most 64 live records; evict the oldest updated record at capacity.
-* Expiry sweep every 15 seconds only while records exist. Reads exclude expired
-  records immediately. Alerts are not persisted across reloads.
+Accepted submissions also display locally, using the wire ID to deduplicate
+guild self-echo. An accepted send return is not a remote acknowledgement.
+No acknowledgements, retransmission, background send queue or delivery guarantee
+exist. Failures report a message; the user deliberately retries after debounce.
 
-4. SNAPSHOT SEMANTICS - DO NOT OVERSTATE THIS DATA
+UI: 300x88 top-right toast for ten seconds; left-click details, right-click
+dismiss. Details and activity list retain the report after the toast closes.
+Show on map is guarded during combat; the player opens it after combat.
+Normal sends: 120-second persisted cooldown. Test sends: separate ten seconds.
+Attempt debounce: five seconds. Toast spacing: 30 seconds normal / five test.
+Mute suppresses toasts, not storage or map pins. Suppressed toasts are not queued.
+Maximum 64 records; five-minute guild-report TTL. Expiry sweep every 15 seconds
+while records exist; list reads exclude expired records. Reports are not saved
+across reloads. /cta clear clears displays, not report cooldowns.
 
-Report.lua inspects target, targettarget, mouseover, focus, up to 40 raid tokens,
-4 party tokens and up to 64 current nameplate frames, only when invoked.
-It requires accessible player identity and PvP flag. It includes a player only
-when UnitDistanceSquared returns a usable value and checkedDistance=true with
-distance squared <=10000. It deduplicates by GUID and returns at most 64 entries.
-Forbidden frames, API failures and secret values are skipped where guarded.
-The snapshot always has complete=false. It is not an enumeration of everyone
-nearby. The player token is not explicitly inspected; the observer may appear
-through another candidate token. Do not automatically count the observer.
+5. SNAPSHOT SEMANTICS
 
-Unknown-range counts are unique identifiable flagged candidates for which
-range could not be established, not extra confirmed players within 100 yards.
-Players with inaccessible identity/flag can be absent without contributing to
-that count. Snapshot entries have distance from the observer, not enemy map
-coordinates. Current snapshot logic cannot distinguish bystanders from fighters.
+Report.lua performs one bounded traversal on user input: target, targettarget,
+mouseover, focus, up to 40 raid and four party tokens, and 64 nameplate frames.
+Normal samples require readable player identity and a true PvP flag. Players
+are included only when UnitDistanceSquared returns a usable checked distance
+<=10000 square yards. GUID deduplication and a 64-player cap apply.
+The player token is explicitly added only in test mode; normal mode must not
+automatically count the reporter. Inaccessible/restricted data is skipped where
+guarded. complete=false always: this is not a reliable 100-yard census.
 
-CRITICAL DEPENDENCY: no actual combat-action evidence is currently emitted.
-The backend cannot manufacture a verified four-combatant heat node from this
-snapshot. Ship observer reports first; add a permitted, tested combat evidence
-producer or explicitly agreed manual-estimate policy before automated heat.
-Combat source/destination flags are a research lead, not verified Forever access.
+unknownRange counts identifiable eligible candidates with unverified distance;
+they are NOT additional confirmed nearby players. Out-of-range units are excluded.
+Local snapshots contain GUID/name/faction/actual flag/distance and a separate
+simulatedCombat field. A.lastSnapshot is transient. Only summary COUNTS are sent
+over GUILD; sampled identities never enter this wire format.
 
-5. IN-GAME ADAPTER CONTRACT - EXISTS TODAY
+No combat-action evidence is currently produced. Flagged bystanders and players
+fighting NPCs cannot become verified heat from this snapshot. Before automated
+heat, implement and test a permitted evidence source, or agree on a clearly
+labeled manual-estimate policy. Duel filtering remains deferred beyond the MVP.
 
-After addon initialization:
+6. CURRENT GUILD WIRE CONTRACT (NOT AN HTTP DTO)
 
-  ForeverPVP.SetTransport(function(request)
-      -- Validate/encode and dispatch through a VERIFIED supported transport.
-      -- Return true only if accepted for delivery; false on failure.
-  end)
+Prefix CTA_REPORT1; route GUILD; one tab-delimited message <=255 bytes.
+No chunking, compression, JSON, polling or ordinary-chat parsing.
+Exactly 13 fields, in order:
+  1 version          literal 1
+  2 mode             R (normal) or T (simulated)
+  3 nonce            digits-digits-digits, <=40 bytes; server time/uptime/sequence
+  4 updatedAt        integer Unix seconds; receive window now-299 to now+30
+  5 mapID            integer 1..100000
+  6 x                integer 0..10000; round(normalizedX * 10000)
+  7 y                integer 0..10000; round(normalizedY * 10000)
+  8 faction          H or A
+  9 ruleset          normal | pvp | rp | rppvp | hardcore
+ 10 observedCount    integer 0..64
+ 11 unknownRange     integer 0..128
+ 12 syntheticCount   integer 0..4; R requires 0; T requires max(0,4-observed)
+ 13 region           integer 1..99
 
-The callback is synchronous and must not yield. Calls are protected with pcall.
-The adapter must bound any queue it owns. No hidden retry queue exists in core.
-SetTransport(nil) detaches it. ForeverPVP.Report() invokes the report action.
-Authoritative inbound alerts are passed as ordinary Lua tables to:
+Zone text derives locally from mapID. Coordinates are normalized 0..1 after
+decoding. Expiry is updatedAt+300. Test count is observed+synthetic; normal count
+stays unknown. Titles/notes are reconstructed locally, not free text on the wire.
+Reporter comes from the WoW event sender (realm normalized), not a claimed name
+in the payload. Record ID: guild:<compact sender hash>:<nonce>. The hash is for
+namespacing, not cryptographic authentication or a globally guaranteed identity.
 
-  local accepted, reason = ForeverPVP.Receive(record)
+Scope.lua reads actual C_GameRules flags (HardcoreRuleset/RPRuleset/PvPRuleset)
+and GetCurrentRegion. Unknown/error/secret values disable network reporting.
+Hardcore takes precedence. No user ruleset override can redirect network reports.
+Receive requires matching region, ruleset and faction. Scope changes clear local
+records. No realm or layer field exists; do not infer a layer from sender realm.
 
-There is no built-in JSON decoder, signing implementation, HTTP client,
-WebSocket client or Discord token. An HTTP backend alone does not connect this
-Lua boundary to the service. All supplied values must be non-secret and plain.
-Incoming snapshots are NOT retained by Model.lua; only normalized display
-fields are kept. Store detailed evidence in the backend and emit a short note.
+GUILD limits reach to guild members, not every addon user or another guild.
+Underlying broadcast bytes can reach other guild members before our client
+filters them. Audience filtering is not confidentiality or verification of a
+sender's claimed faction/ruleset. There is no community/organizer authorization.
 
-6. CURRENT OUTBOUND OBSERVER RECORD
+Receive rejects wrong prefix/route/scope, invalid fields/times, secret values,
+duplicates and test packets without opt-in. Per-sender limits are 120 seconds
+normal / ten test; global budget is 12 messages with refill of one per second;
+rate bookkeeping is bounded to 128 entries. There is no area-based deduplication
+between different observers. Keep that gap separate from same-ID deduplication.
 
-Illustrative Lua table; times are examples, not a current replayable fixture:
+7. LUA EXTENSION BOUNDARY
 
-{
-  version = 1,
-  id = "local:1793980800",
-  kind = "report", manual = true,
-  faction = "Horde", ruleset = "pvp",
-  mapID = 267, x = 0.524, y = 0.468,
-  zone = "Hillsbrad Foothills",
-  title = "PvP activity reported", reporter = "Grask",
-  updatedAt = 1793980800, expiresAt = 1793981100,
-  count = 0, countUnknown = true,
-  snapshot = {
-    radiusYards = 100, complete = false, unknownRange = 2,
-    players = {
-      {guid = "Player-example", name = "Example", faction = "Alliance",
-       pvpFlagged = true, distanceYards = 42}
-    }
-  },
-  note = "Observer report; fight size unknown. Snapshot coverage incomplete."
-}
+After initialization, CallToArms.Version=1 is the API contract version (not the
+release number). CallToArms.Report() invokes reporting; Receive(record) validates
+and displays a Lua table. SetTransport(callback) replaces the default guild
+adapter. The synchronous callback receives the local request and returns
+true, message only when accepted for dispatch, or false, reason. Calls are
+protected with pcall; no yielding or unbounded queues. SetTransport(nil) detaches
+it and leaves local-preview behavior. No HTTP bridge is implied by this hook.
 
-Map IDs must be verified against the target client; mapID is authoritative for
-coordinates, not the localized zone label. Coordinates are normalized 0..1,
-not percentages or yards. Timestamps are Unix seconds.
+Local outbound requests include manual=true, kind=report, map/coordinates,
+audience, timestamps, a temporary local:<time> ID, snapshot and summary counts.
+GuildTransport replaces the temporary ID with the sender/nonce wire identity.
+Do not use the temporary local ID as a globally unique backend idempotency key.
 
-The local ID is timestamp-based and NOT globally unique. Wrap with authenticated
-reporter identity/session and a nonce before deduplication; the server assigns
-authoritative IDs. Do not trust claimed faction, ruleset, name or timestamp as
-authentication. The snapshot does not provide reporter account/realm identity.
-Production ingress must reject demo=true. Do not replay demo alerts publicly.
+Receive display model (Model.lua; plain non-secret values only):
+  version=1; id nonempty <=80 bytes (%w, underscore, colon, hyphen, dot)
+  kind=report|defense|raid|heat; faction/ruleset must match local display scope
+  mapID integer 1..100000; x/y finite 0..1; count integer 0..1000
+  updatedAt now-3600..now+30; expiresAt now+1..now+3600 and >updatedAt
+  heat additionally requires count>=4, countUnknown false and cityAllowed=true
+  title<=72, reporter/opposition<=64, note<=160 bytes; markup/control text cleaned
+  estimated/demo/test booleans; optional observed/unknown/synthetic summary counts
 
-7. CURRENT INBOUND DISPLAY RECORD
+Normal report count is always unknown. Same ID requires a strictly newer update;
+same-ID updates do not produce another toast. Model limits differ from the more
+restrictive guild decoder. Region is checked in the guild adapter, not in this
+generic display model. Adapter validation/authorization must precede Receive.
+cityAllowed is only a display gate; no implemented city/organizer authority
+backs it. Guild packets support report only, never heat/raid/defense creation.
+Detailed snapshots are not retained by Model.lua. Text limits are byte-based.
+No tombstones, cancellation protocol, layer schema or delivery receipts exist.
 
-Required:
-  version       1
-  id            Nonempty string <=80 bytes; Lua %w plus underscore, colon,
-                hyphen or dot. Prefer ASCII server-issued identifiers.
-  kind          report | defense | raid | heat
-  faction       Must match UnitFactionGroup("player")
-  ruleset       Must match configured client value (pvp/normal/rp/rppvp)
-  mapID         Integer 1..100000
-  x, y          Numeric, finite, 0..1
-  count         Integer 0..1000; heat requires >=4
-  updatedAt     Between client server-time minus 3600 and plus 30 seconds
-  expiresAt     At least now+1, no more than now+3600, strictly >updatedAt
+8. AGREED PRODUCT REQUIREMENTS STILL TO BUILD
 
-Display fields (missing/non-string fields become empty strings):
-  title         <=72 bytes
-  reporter      <=64 bytes
-  opposition    <=64 bytes
-  note          <=160 bytes
-  estimated     true labels an estimate
-  countUnknown  report always displays unknown count; heat rejects truthy value
-  cityAllowed   heat requires literal true (including heat outside cities)
-  demo          reserved for local sample display
+* Heat requires four DISTINCT actual local PvP participants in any combination,
+  including 3v1; pets do not add players. Reports originate with local observers
+  or addon-equipped participants. No worldwide scanning or assumed coverage.
+* Any addon user may issue a defensive observer report. Current transport still
+  requires guild membership; unaffiliated/cross-guild reach is not implemented.
+* Registered guilds/communities can create CTAs within the appropriate ruleset
+  and faction. Organizer roles must be verified. Opposing guild/group attribution
+  is optional reported information, not authoritative identification.
+* Ordinary automatic city heat is suppressed. Authorized city-raid CTAs go to
+  the attacking faction; a scheduled invitation alone must not produce heat.
+  Once active, minimal city status (city/event/window) may enable an exception.
+  Defenders still need their own faction's fresh observer/participant evidence.
+  Do not expose attacking invitation/rally/private organizer data to defenders.
+  End/expire the exception when the raid ends or evidence becomes stale.
+* Keep Blizzard's native map and bounded event-driven Lua. No terrain engine,
+  per-frame scan or mandatory third-party library. Heavy aggregation belongs
+  outside the lightweight renderer, once a usable transport is established.
 
-Pipe markup and control characters are stripped from display text. Truncation
-is byte-based, not UTF-8 aware; server output should fit limits safely.
-Set countUnknown=false and estimated=false explicitly for confirmed heat.
-The frontend does not independently verify combat evidence or organizer roles.
-cityAllowed is a backend authorization result, not proof of a raid by itself.
+Proposed future service responsibilities (not implemented): authenticated
+community membership; ingress validation and reporter+nonce idempotency;
+encounter aggregation with evidence class and distinct participants; city-event
+lifecycle; audience fan-out; bounded queues, expiry and abuse controls; short,
+explicit retention and delivery/rejection observability. Database/hosting and
+retention duration are undecided. See BACKEND_STACK.txt for the C# recommendation.
 
-Same ID replaces a record only if updatedAt is STRICTLY newer. Coalesce to at
-most one version per second per ID for v1. No tombstone remains after eviction
-or expiry; replay protection is required at the adapter/backend boundary.
-No deletion, cancellation, read receipt, explicit acknowledgement event, region,
-layer or raid-state message schema is currently implemented in the frontend.
+Do not sum overlapping snapshots or count observers as fighters. Clustering
+requires map-aware physical distances; normalized map deltas are not yards.
+The requested 100-yard sample is not an agreed encounter-clustering radius.
+Do not merge known distinct layers. Reuse encounter IDs to avoid duplicate
+toasts; severity-escalation notification policy remains undecided.
+City state proposal: scheduled -> active -> ended/cancelled/expired, with
+activation authority, timeouts and map/subzone boundary data still to define.
 
-8. BACKEND IMPLEMENTATION PLAN (PROPOSED, NOT BUILT)
+9. NEXT GATE: VALIDATE REPORTS BEFORE LAYER COORDINATION
 
-A. Prove transport before committing to infrastructure.
-   Test Discord user messages, bot/webhook messages, and both directions between
-   addon and service separately. Confirm addon-readable payloads, stable sender
-   metadata, link limits, combat lockdown and rate/size limits in Forever.
-   Guild mirroring is a candidate, not a verified universal broadcast bus.
-   Verify access for unaffiliated users and multiple communities. Scope claims
-   to actual coverage; do not assume every installed addon can receive traffic.
+Follow PRE_LAYER_TEST_CHECKLIST.txt. First prove fresh remote reports and visible
+pins on BOTH current clients, keybinding/macro behavior, toast lifecycle, main
+UI combat behavior, cooldown/self-echo/expiry cleanup and test isolation.
+Record unrun PvP, range-boundary and other-ruleset checks as limitations, not
+passes. Broader product work above is a backlog, not already-delivered behavior.
 
-B. Identity and subscriptions.
-   Register communities with region/ruleset/faction and verified organizers.
-   Associate reporter identities with authenticated accounts/characters through
-   a supported flow. Never embed service secrets in distributed Lua.
-   Route reports only to eligible faction subscriptions. Shared city status is
-   the explicit minimal cross-faction exception. Realm/layer facts may be unknown.
+Layer is currently always unknown. Guild delivery and coordinates do not prove
+co-location. Contacting the reporter for a group invite is manual guidance only;
+there are no automated invites/whispers, layer IDs or forced world refreshes.
+After the report gate, test grouping and any Blizzard-provided refresh flow
+with mutual in-world visibility as the success criterion. Do not advertise
+guaranteed layer transfer or infer a numeric layer from unrelated identifiers.
 
-C. Ingest and normalize.
-   Use separate authenticated envelopes for transport identity, request nonce,
-   region, receive time and replay protection. Validate sizes/types before
-   parsing into domain objects. Reject stale/future/demo/forged records.
-   Record reporter position as the observation anchor, not exact battle center.
+10. SOURCE REFERENCES CONSULTED DURING IMPLEMENTATION
 
-D. Aggregate encounters.
-   Deduplicate retries by authenticated reporter + nonce. Cluster compatible
-   recent reports by map/physical proximity and audience. Map-normalized deltas
-   are not yards; use map-aware geometry if physical radii are required.
-   Maintain source reports, distinct participant identities and evidence class.
-   Require actual fight evidence before promoting to heat. Never sum snapshots
-   or treat four reporters as four fighters. Do not combine known distinct layers.
-   Clustering radius/time window remains a tuning decision; 100yd refers to the
-   requested snapshot radius, not a finalized backend encounter-clustering rule.
-
-E. City events.
-   Proposed lifecycle: scheduled -> active -> ended/cancelled/expired.
-   Require fresh evidence or verified organizer activation for active state.
-   Publish only minimal city status across factions. Emit faction-specific heat
-   only after receiving eligible evidence for that faction. Maintain a versioned
-   city-map/subzone/boundary dataset; do not rely on localized zone names alone.
-   Duration, inactivity timeout and activation permissions need final tuning.
-
-F. Fan-out and abuse controls.
-   Reuse stable encounter IDs to avoid duplicate toasts from nearby observers.
-   Rate-limit per account/community/area, retain meaningful updates, and bound
-   output queues. Expire stale intelligence. Do not replay an alert flood after
-   reconnect. Keep notification policy separate from record delivery.
-   Current report->heat promotion under the same ID updates silently; confirm
-   whether future severity escalation should generate a new notification.
-
-G. Observability and retention.
-   Track rejected reports, duplicate ratio, accepted-to-delivered latency,
-   transport failures and stale/cancelled events. Define short evidence retention
-   and community access rules; do not keep an indefinite movement history by
-   accident. No retention duration has been agreed yet.
-
-Suggested service boundaries, not fixed endpoints or a chosen framework:
-   community registration and membership
-   report ingestion
-   encounter aggregation/read model
-   guild raid event lifecycle
-   faction delivery and acknowledgement/rejection
-No backend language, database or hosting stack has been selected.
-
-9. FRONTEND FOLLOW-UPS REQUIRED FOR LIVE INTEGRATION
-
-* Implement the verified transport adapter and authenticate/validate envelopes.
-* Add region/session identity and robust request IDs without changing /cta UX.
-* Define explicit rejection/acknowledgement/cancellation handling. Today a report
-  is 'submitted' on adapter acceptance and otherwise relies on a later Receive.
-* Add permitted combat evidence capture if automatic heat remains in scope.
-* Coordinate versioned city-status/cancellation messages if clients need them;
-  alternatively keep city decisions server-side and emit authorized display data.
-* Specify confidence/estimate rules. v1 accepts estimated heat counts >=4, so
-  the backend must enforce the stricter agreed actual-combatant threshold.
-* Verify and harden secret-value handling in the real client. Mock tests do not
-  reproduce WoW's taint/security system or every possible secret return.
-* Resolve deferred UI polish: localization/UTF-8, toast placement options, and
-  details/tooltip expiry refresh. Details currently update on open, not live.
-* Decide a coordinated product rename separately: addon folder, TOC, globals,
-  bindings, SavedVariables migration and test paths must change together.
-
-10. VALIDATION AND ACCEPTANCE
-
-Automated tests previously passed under Lua 5.1 using development-only lupa:
-syntax, audience filtering, malformed records, duplicates, store bounds, expiry,
-text sanitization, submission failures/cooldowns, snapshot GUID deduplication,
-100-yard boundary, unknown range, API failures and simulated secret values.
-Run from repository root:
-  python -m pip install lupa
-  python tests/test_addon.py
-  python tests/test_reporting.py
-
-Interactive preview logic was checked for command submission, toast/detail/map
-navigation, timeout/history, replay and duplicate suppression. No live WoW
-rendering, actual network delivery or performance benchmark has been completed.
-
-Acceptance scenarios for backend + real-client integration:
-1. /cta report submits without opening a form. Coordinates are the observer's.
-2. A same-faction eligible receiver gets a compact toast and can open details.
-3. Opposite faction or different region/ruleset receives no private report.
-4. Missing snapshot data still permits a manual report with unknown fight size.
-5. Four flagged NPC-fighters/bystanders do NOT become confirmed PvP heat.
-6. Four distinct verified PvP participants (including 3v1) create one heat node.
-7. Multiple observers/retries produce one encounter, not inflated counts/toasts.
-8. Ordinary city heat is suppressed. A scheduled city raid does not lift it.
-9. Active Horde Stormwind raid exposes minimal city status; Alliance heat waits
-   for Alliance evidence. Alliance observers can issue defensive alerts.
-10. Ending/cancelling/expiring a raid removes its exception and stale displays
-    within the defined SLA (requires cancellation contract or bounded expiry).
-11. Forged organizer roles, spoofed audiences, replayed/demo/malformed payloads
-    are rejected. Notification spam does not cause unbounded client work.
-12. Lockdown/disconnect produces accurate delivery state, not false success.
-13. Test bindings, map pan/zoom, toast clicks in combat, restricted values and
-    addon memory/CPU in the actual Forever build before installation rollout.
-
-11. RESEARCH REFERENCES AND DECISION GATE
-
-These are references inspected during development, not a guarantee that all
-functions are available to third-party addons in the installed client:
-https://github.com/Gethe/wow-ui-source/tree/forever
-https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua
-https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/NamePlateDocumentation.lua
-https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/Blizzard_MapCanvas.lua
-https://discord.com/blog/link-world-of-warcraft-with-discord
-
-Start with two integration spikes: transport round trip and permitted outdoor
-PvP evidence. A backend API can handle aggregation and Discord connectivity,
-but cannot grant Lua access to unavailable units or restricted combat data.
+The Gethe repository mirrors Blizzard UI source; links below use the forever
+branch and may change. Live conclusions are scoped to the tested client above.
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_WorldMap/Blizzard_WorldMap.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/MapCanvas_PinFrameLevelsManager.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/GameRulesDocumentation.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatConstantsDocumentation.lua

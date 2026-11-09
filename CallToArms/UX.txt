@@ -1,0 +1,21 @@
+CALL TO ARMS 0.4.4-alpha UX
+
+/cta report and its binding submit one report with no confirmation flow.
+Reports go to the guild, filtered on actual ruleset, region and faction.
+The sender sees a local submission; only remote receipt proves delivery.
+
+Top-right toast: click for details; right-click dismisses. Details show zone,
+coordinates, reporter, count/unknown count, snapshot summary, scope, expiry and
+unknown layer. Show on map selects the report's zone outside combat.
+Zone-map crossed-swords pins open the same details. No continent aggregation.
+
+Test mode: session-only opt-in on both ends, [TEST] labels and purple pins,
+four or more simulated participants including clearly counted synthetic filler.
+Test reports use the existing report presentation, not production heat logic.
+Normal sends: 120s cooldown, test sends: 10s, failed retries: 5s debounce.
+Normal toasts: 30s spacing, test toasts: 5s. Muting suppresses toasts, not storage.
+Reports expire after five minutes, store bounded to 64; test off clears tests.
+
+Both players install the main addon. Bindings: Call to Arms -> Report PvP at my
+location. An action-bar macro with /cta report works as well. Configure outside
+combat. Layer coordination currently requires contacting the reporter manually.

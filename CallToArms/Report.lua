@@ -8,16 +8,19 @@ local function read(fn, ...)
 end
 
 -- One bounded snapshot on user input; no background scan or retained unit frames.
-function A.Snapshot()
+function A.Snapshot(simulate)
     local result = {radiusYards = 100, complete = false, players = {}, unknownRange = 0}
     local seen = {}
     local function inspect(unit)
         if #result.players >= 64 then return end
-        if read(UnitIsPlayer, unit) ~= true or read(UnitIsPVP, unit) ~= true then return end
+        if read(UnitIsPlayer, unit) ~= true then return end
+        local flagged = read(UnitIsPVP, unit) == true
+        if not simulate and not flagged then return end
         local guid = read(UnitGUID, unit)
         if type(guid) ~= "string" or seen[guid] then return end
         seen[guid] = true
         local distance, checked = read(UnitDistanceSquared, unit)
+        if simulate and unit == "player" then distance, checked = 0, true end
         if checked ~= true or type(distance) ~= "number" or distance ~= distance or distance < 0 then
             result.unknownRange = result.unknownRange + 1
             return
@@ -25,10 +28,12 @@ function A.Snapshot()
         if distance > 10000 then return end
         result.players[#result.players + 1] = {
             guid = guid, name = A.CleanText(read(UnitName, unit), 64),
-            faction = read(UnitFactionGroup, unit), pvpFlagged = true,
+            faction = read(UnitFactionGroup, unit), pvpFlagged = flagged,
+            simulatedCombat = simulate == true,
             distanceYards = math.floor(math.sqrt(distance)),
         }
     end
+    if simulate then inspect("player") end
     for _, unit in ipairs({"target", "targettarget", "mouseover", "focus"}) do inspect(unit) end
     for i = 1, 40 do inspect("raid" .. i) end
     for i = 1, 4 do inspect("party" .. i) end
@@ -47,8 +52,11 @@ end
 
 function A.Report()
     if not A.db then return false, "Addon is not ready." end
+    if A.RefreshScope and not A.RefreshScope() then return false, "Ruleset/region unavailable; report not sent. Run /cta status." end
     local now = GetServerTime()
-    if now - (A.db.lastSubmit or 0) < 120 then return false, "Report cooldown active." end
+    local test = A.testMode == true
+    local lastSubmit = test and A.lastTestSubmit or A.db.lastSubmit
+    if now - (lastSubmit or 0) < (test and 10 or 120) then return false, "Report cooldown active." end
     if A.lastAttempt and GetTime() - A.lastAttempt < 5 then return false, "Please wait before retrying." end
     A.lastAttempt = GetTime()
     local loc = A.CurrentLocation()
@@ -60,21 +68,28 @@ function A.Report()
         mapID = loc.mapID, x = loc.x, y = loc.y, zone = info and info.name or "",
         title = "PvP activity reported", reporter = UnitName("player"),
         updatedAt = now, expiresAt = now + 300,
-        count = 0, countUnknown = true, snapshot = A.Snapshot(),
+        count = 0, countUnknown = true, test = test, snapshot = A.Snapshot(test),
         note = "Observer report. Flagged players are not confirmed combatants.",
     }
-    request.note = "Observer report; fight size unknown. Snapshot: " .. #request.snapshot.players
-        .. " flagged players with verified range <=100yd; " .. request.snapshot.unknownRange
-        .. " with unknown range. Coverage incomplete."
+    request.observedCount = #request.snapshot.players
+    request.unknownRange = request.snapshot.unknownRange
+    request.syntheticCount = test and math.max(0, 4 - request.observedCount) or 0
+    if test then
+        request.title = "Simulated PvP report"
+        request.count = request.observedCount + request.syntheticCount
+        request.countUnknown = false
+    end
+    A.lastSnapshot = request.snapshot -- local-only sampled identities; wire uses bounded counts.
+    request.note = A.ReportNote(test, request.observedCount, request.unknownRange, request.syntheticCount)
     if not A.adapter then
         request.demo = true
         local ok, reason = A.Receive(request)
         return ok, ok and "Local report preview created. Nothing was sent." or reason
     end
-    local safe, accepted = pcall(A.adapter, request)
-    if not safe or accepted ~= true then return false, "Delivery unavailable; report not sent." end
-    A.db.lastSubmit = now
-    return true, "Report submitted; awaiting delivery confirmation."
+    local safe, accepted, message = pcall(A.adapter, request)
+    if not safe or accepted ~= true then return false, (safe and message) or "Delivery unavailable; report not sent." end
+    if test then A.lastTestSubmit = now else A.db.lastSubmit = now end
+    return true, message or "Report submitted; remote delivery not confirmed."
 end
 
 function A.RunReport()

@@ -1,0 +1,7 @@
+## Interface: 16001
+## Title: CTA Probe - Snapshot 01
+## Notes: Single-use diagnostic slot. Loaded only by an explicit snapshot command.
+## Author: CallToArms
+## Version: 0.2.0
+## LoadOnDemand: 1
+Snapshot.lua

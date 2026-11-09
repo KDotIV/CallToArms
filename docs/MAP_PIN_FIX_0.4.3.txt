@@ -1,0 +1,44 @@
+HISTORICAL INVESTIGATION NOTE - SUPERSEDED
+The proposed change below did not resolve map visibility in live testing.
+Current release: 0.4.4-alpha; AREA_POI layer fix visibly verified in WoW.
+Use MAP_PIN_FIX_0.4.4.txt and GUILD_REPORT_RESULTS_2026-11-09.txt for current status.
+Old install/retest directions below are retained as history, not current guidance.
+
+CALL TO ARMS 0.4.3-alpha - FILE-INDEPENDENT PIN RENDERING
+November 9, 2026
+
+Live 0.4.2 feedback
+Pins were still invisible despite working tooltips. /cta mapdebug showed map
+1421, shown=true, pins=2, frame level 2000, effective alpha=1, dimensions about
+28x28 and texture handle -10135. A texture handle alone does not establish that
+the texture decoded successfully. The root cause is not yet proven; the previous
+frame-level explanation was insufficient to resolve the observed problem.
+
+Change
+Native MapCanvas pins are retained. Crossed swords now use six solid-color Line
+primitives plus six dark outline strokes. No file texture or atlas is loaded by
+the pin renderer. Test coloring is still purple; normal reports remain blue.
+The old TGA remains in the repository as an unused asset, not a runtime dependency.
+A text X fallback is used only if CreateLine is unavailable on the client.
+
+New diagnostic
+/cta pincheck toggles a small independent center-screen panel with the SAME
+renderer. It sends nothing. This separates map-specific rendering from primitive
+drawing: if the panel works and the map does not, investigate map rendering;
+if neither works, investigate drawing/runtime errors rather than map placement.
+/cta mapdebug now reports renderer=native-lines and foreground stroke count.
+
+Retest
+The local installation is updated. Guildmate installs CallToArms-0.4.3-alpha.zip.
+Run /reload outside combat, then /cta pincheck. Expect visible purple swords.
+Run /cta pincheck again to close the panel.
+Run /cta test on, /cta report, and Show on map to check the map presentation.
+If only one location renders, report which, with /cta mapdebug from the open map.
+
+Validation
+Offline tests pass for image-free strokes, colors, endpoints, thickness,
+pincheck toggling, native pin lifecycle, report delivery and UI interactions.
+Live rendering of this version remains NOT YET VERIFIED.
+
+Reference
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleLineAPIDocumentation.lua

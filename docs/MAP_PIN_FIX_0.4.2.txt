@@ -1,0 +1,55 @@
+HISTORICAL INVESTIGATION NOTE - SUPERSEDED
+The proposed change below did not resolve map visibility in live testing.
+Current release: 0.4.4-alpha; AREA_POI layer fix visibly verified in WoW.
+Use MAP_PIN_FIX_0.4.4.txt and GUILD_REPORT_RESULTS_2026-11-09.txt for current status.
+Old install/retest directions below are retained as history, not current guidance.
+
+CALL TO ARMS 0.4.2-alpha - NATIVE MAP PINS
+November 9, 2026
+
+The bundled texture in 0.4.1 remained invisible in the live client, although its
+hover target worked. Do not treat the earlier asset-only fix as verified.
+
+The old map code created a plain canvas button at canvas frame level +20. The
+Forever map implementation uses a managed pin-level system with a default level
+of 2000. Map detail/exploration layers can cover unmanaged low-level textures
+while mouse hit testing still finds the button. This is a supported explanation
+from source inspection; the exact live occluding layer was not instrumented.
+
+Replacement
+* Built-in Blizzard_MapCanvas dependency ensures the pin/provider mixins exist.
+* Custom XML frame template and MapCanvasPinMixin use the native AcquirePin pool.
+* A MapCanvasDataProviderMixin supplies current-zone report records and removes
+  only our own template's pins. Map changes/show refresh through native lifecycle.
+* Normalized SetPosition coordinates and native scaling handle zoom/pan.
+* Managed PIN_FRAME_LEVEL_DEFAULT replaces the canvas+20 frame-level guess.
+* Native mouse methods preserve tooltips/details and right-click map behavior.
+* The existing bundled crossed-swords texture and purple TEST tint are retained.
+No floating tooltip-strata marker or forced map-wide frame-level changes are used.
+
+Validation
+Offline Lua 5.1 and XML checks pass. Two-client tests cover receipt and details,
+normalized positions, managed frame-level selection, pin recycling, zone changes,
+test cleanup and click actions. They model the API contract, not GPU rendering.
+Actual in-game visibility remains pending a user retest.
+
+Install and retest
+Both players install CallToArms-0.4.2-alpha.zip including MapPins.xml and Media/.
+The local user's installed files were updated during development. Fully restart
+once for the new manifest/template, enable Call to Arms, then run:
+  /cta test on
+  /cta report
+Open report details -> Show on map outside combat. Expect a visible purple swords
+pin. Also check hover, click, zoom, zone change and /cta test off cleanup.
+For a local rendering-only check, /cta demo requires no guildmate/network send.
+
+If still invisible, leave the report's zone map open and run:
+  /cta mapdebug
+Capture the diagnostic lines and the map. It reports native pin count, frame
+level, effective alpha, texture identity and dimensions to distinguish loading,
+placement, opacity and rendering-order problems. It sends no messages.
+
+Sources inspected
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/Blizzard_MapCanvas.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/MapCanvas_PinFrameLevelsManager.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/MapCanvas_DataProviderBase.lua

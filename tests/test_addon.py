@@ -1,9 +1,9 @@
-﻿from pathlib import Path
+from pathlib import Path
 import sys
 # Install the development-only runtime with: python -m pip install lupa
 from lupa.lua51 import LuaRuntime
 
-root = Path(__file__).resolve().parents[1] / 'ForeverPVP'
+root = Path(__file__).resolve().parents[1] / 'CallToArms'
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute('''
 NOW = 10000
@@ -17,7 +17,7 @@ A = {db={ruleset='pvp'}}
 ''')
 for path in root.glob('*.lua'):
     lua.execute('assert(loadstring(...))', path.read_text())
-lua.execute('assert(loadstring(...))("ForeverPVP", A)', (root/'Model.lua').read_text())
+lua.execute('assert(loadstring(...))("CallToArms", A)', (root/'Model.lua').read_text())
 lua.execute('''
 function record(id)
  return {version=1,id=id or 'a',kind='heat',faction='Horde',ruleset='pvp',
@@ -39,7 +39,7 @@ for i=1,100 do assert(A.Receive(record('id'..i))) end
 assert(#A.List()==64)
 NOW=NOW+400; assert(A.Prune(NOW)); assert(#A.List()==0)
 ''')
-lua.execute('assert(loadstring(...))("ForeverPVP", A)', (root/'Core.lua').read_text())
+lua.execute('assert(loadstring(...))("CallToArms", A)', (root/'Core.lua').read_text())
 lua.execute('''
 A.RefreshUI=function() end; A.RefreshMap=function() end
 A.ShowToast=function() end

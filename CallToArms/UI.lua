@@ -1,6 +1,7 @@
 local _, A = ...
 local colors = { heat = {1, .42, .20}, defense = {.35, .75, 1}, raid = {1, .76, .28}, report = {.35, .75, 1} }
 A.colors = colors
+A.testColor = {.8, .45, 1}
 
 local function label(parent, size, x, y, value)
     local f = parent:CreateFontString(nil, "OVERLAY", size or "GameFontNormal")
@@ -24,7 +25,7 @@ end
 
 function A.Tooltip(owner, r)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    GameTooltip:AddLine((r.demo and "[DEMO] " or "") .. r.title, 1, .82, .35)
+    GameTooltip:AddLine(A.DisplayTitle(r), 1, .82, .35)
     GameTooltip:AddLine(A.LocationText(r), 1, 1, 1)
     GameTooltip:AddLine(A.CountText(r), 1, 1, 1)
     if r.reporter ~= "" then GameTooltip:AddLine("Reported by: " .. r.reporter, .7, .7, .7) end
@@ -36,7 +37,7 @@ end
 
 function A.BuildUI()
     if A.panel then return end
-    local p = CreateFrame("Frame", "ForeverPVPPanel", UIParent, "BackdropTemplate")
+    local p = CreateFrame("Frame", "CallToArmsPanel", UIParent, "BackdropTemplate")
     A.panel = p
     p:SetSize(460, 520); p:SetPoint("CENTER"); p:SetFrameStrata("DIALOG")
     p:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1})
@@ -44,8 +45,8 @@ function A.BuildUI()
     p:SetClampedToScreen(true); p:SetMovable(true); p:EnableMouse(true)
     p:RegisterForDrag("LeftButton")
     p:SetScript("OnDragStart", p.StartMoving); p:SetScript("OnDragStop", p.StopMovingOrSizing)
-    table.insert(UISpecialFrames, "ForeverPVPPanel")
-    label(p, "GameFontNormalLarge", 20, -18, "FOREVER  /  PVP")
+    table.insert(UISpecialFrames, "CallToArmsPanel")
+    label(p, "GameFontNormalLarge", 20, -18, "CALL TO ARMS")
     p.status = label(p, "GameFontHighlightSmall", 20, -44)
     local close = CreateFrame("Button", nil, p, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
@@ -71,7 +72,7 @@ function A.BuildUI()
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
         p.rows[i] = row
     end
-    p.empty = label(p, "GameFontHighlight", 35, -180, "No active reports.\n\nUse /fwp demo to preview the interface.")
+    p.empty = label(p, "GameFontHighlight", 35, -180, "No active reports.\n\nUse /cta demo to preview the interface.")
     p.empty:SetWidth(390)
     p.page = label(p, "GameFontHighlightSmall", 170, -444)
     button(p, "Previous", 95, 20, -436, function() A.page = math.max(1, A.page - 1); A.RefreshUI() end)
@@ -92,7 +93,8 @@ function A.RefreshUI()
     local list = A.List(A.filter)
     local pages = math.max(1, math.ceil(#list / 5))
     A.page = math.min(A.page, pages)
-    p.status:SetText((UnitFactionGroup("player") or "Unknown") .. "  |  " .. A.db.ruleset .. "  |  " .. (A.adapter and "Transport attached" or "Local preview - not connected"))
+    p.status:SetText((UnitFactionGroup("player") or "Unknown") .. " | " .. (A.scopeRuleset or "Unknown ruleset") .. " | "
+        .. (A.testMode and "TEST MODE | " or "") .. (A.guildReady and A.scopeRuleset and "Guild reports" or "Transport unavailable"))
     p.page:SetText(A.filter .. "  /  " .. A.page .. " of " .. pages)
     p.mute:SetText(A.db.muted and "Alerts: muted" or "Alerts: on")
     p.empty:SetShown(#list == 0)
@@ -100,8 +102,8 @@ function A.RefreshUI()
         local r = list[(A.page - 1) * 5 + i]
         row.record = r; row:SetShown(r ~= nil)
         if r then
-            local c = colors[r.kind]; row.bar:SetColorTexture(c[1], c[2], c[3], 1)
-            row.title:SetText((r.demo and "[DEMO] " or "") .. r.title)
+            local c = r.test and A.testColor or colors[r.kind]; row.bar:SetColorTexture(c[1], c[2], c[3], 1)
+            row.title:SetText(A.DisplayTitle(r))
             row.where:SetText(A.LocationText(r))
             row.meta:SetText(r.kind:upper() .. "  |  " .. A.CountText(r) .. "  |  " .. math.ceil((r.expiresAt - GetServerTime()) / 60) .. "m left")
         end
@@ -110,12 +112,12 @@ end
 
 function A.ShowComposer()
     if not A.composer then
-        local f = CreateFrame("Frame", "ForeverPVPComposer", UIParent, "BackdropTemplate")
+        local f = CreateFrame("Frame", "CallToArmsComposer", UIParent, "BackdropTemplate")
         A.composer = f
         f:SetSize(410, 330); f:SetPoint("CENTER"); f:SetFrameStrata("FULLSCREEN_DIALOG")
         f:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1})
         f:SetBackdropColor(.06, .07, .09, 1); f:SetBackdropBorderColor(.35, .5, .65)
-        f:EnableMouse(true); table.insert(UISpecialFrames, "ForeverPVPComposer")
+        f:EnableMouse(true); table.insert(UISpecialFrames, "CallToArmsComposer")
         label(f, "GameFontNormalLarge", 20, -20, "Request reinforcements")
         f.location = label(f, "GameFontHighlightSmall", 20, -50)
         f.count = edit(f, "Estimated participants (4+)", 20, -80, 150, 4)

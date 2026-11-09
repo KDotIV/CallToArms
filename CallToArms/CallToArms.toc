@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Call to Arms
+## Notes: Lightweight faction activity map and Call to Arms frontend.
+## Author: Call to Arms
+## Version: 0.4.4-alpha
+## Dependencies: Blizzard_MapCanvas
+## SavedVariables: CallToArmsDB
+Model.lua
+Scope.lua
+GuildTransport.lua
+UI.lua
+Map.lua
+MapPins.xml
+Report.lua
+Notifications.lua
+Core.lua

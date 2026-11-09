@@ -1,0 +1,121 @@
+CALL TO ARMS - VERIFIED RESULTS AND LIMITS
+November 9, 2026 | Main addon through 0.4.4-alpha | Diagnostics 0.3.0
+
+Evidence: user-supplied screenshots and stated two-player test procedure.
+Observed client log: 1.60.1 build 70862, interface 16001.
+Participants: Vitals Shienx and Profcatface Meowmers, same guild/faction.
+User confirmed different zones. Detected scope: rppvp, region 1; guild=true,
+messaging=true. Exact build/version was not separately captured for both clients
+at every step. Results do not generalize automatically to other client builds.
+
+STATUS SUMMARY
+
+VERIFIED: two-way cross-zone GUILD diagnostic delivery; each player's combat
+send had remote receipt; main report receipt/details; visible map artwork after
+the 0.4.4 fix, including three demo colors and the purple simulated-report pin.
+PARTIAL: full report end-to-end acceptance on the final version. Remote main
+reports were observed earlier; final visible TEST-pin screenshot is local-origin.
+OFFLINE ONLY / NOT RUN: the remaining checks listed below and in
+PRE_LAYER_TEST_CHECKLIST.txt. No layer-coordination implementation is verified.
+
+1. TRANSPORT PROBE
+
+CTAPROBE prefix, GUILD route, CHAT_MSG_ADDON event. Distinct playerA03/playerB03
+markers were received across clients. Sender success result=0 was accompanied
+by matching remote RECEIVE/META evidence, not just the sender's own echo.
+
+Vitals sent combatA01 with combat=true; Profcatface's screenshot received it from
+Vitals. Profcatface sent combatb01 with combat=true; Vitals' screenshot received
+it from Profcatface. User corrected which screenshot belonged to which client;
+the final pairing establishes BOTH sending directions during actual PvE combat.
+Receiver combat state was not independently captured at each receive instant.
+Actual PvP combat and the main report UI during combat remain untested.
+chatLockdown=false and addonOutgoingRestricted=true appeared in the tested
+combat status. The latter flag did not prevent these successful remote receipts.
+
+Earlier /ctaprobe status produced a blocked-action popup while the probe called
+a restricted Discord status API. Discord calls were removed from active testing;
+subsequent messaging screenshots and user feedback reported no popup/blockage.
+This is not evidence that all protected UI actions are available in combat.
+
+2. MAIN REPORT INTEGRATION
+
+Initial integration (0.4.0-alpha): send acceptance and remote guild-report receipt
+were logged. A report from Profcatface displayed Tirisfal Glades 60.7 / 56.7,
+four simulated participants, one observed including reporter plus three synthetic,
+unknown-range zero, incomplete coverage, rppvp and Layer: unknown.
+Map hover at that coordinate showed the report, but the icon was invisible.
+
+The normal observer-report path also produced details/hover text with unknown
+fight size and zero sampled flagged players in later Silverpine screenshots.
+Those views do not establish real PvP detection or a complete 100-yard census.
+Details are verified visible. A top-right toast and its full click/dismiss/
+timeout/mute behavior still need an explicit recorded acceptance pass.
+
+3. MAP INVESTIGATION AND RESOLUTION
+
+0.4.1: bundled crossed-swords TGA did not resolve live map visibility.
+0.4.2: native MapCanvas pin/provider at DEFAULT still had an invisible icon.
+0.4.3: native line swords rendered in /cta pincheck, but not on the map.
+Debug showed map 1421, visible map, two pins, level 2000, alpha 1 and size 28x28.
+These results pointed to map layer ordering, not a missing clickable record.
+
+0.4.4: switched to PIN_FRAME_LEVEL_AREA_POI. Blizzard registers exploration and
+fog above DEFAULT, so a numeric level of 2000 was underneath opaque overlays.
+The managed AREA_POI layer places the native line swords above those overlays.
+Offline regression now checks that relative ordering.
+
+LIVE PASS: user reported "We're able to see the pins now"; screenshot showed
+orange, blue and yellow crossed-swords demo pins, activity list and details.
+LIVE PASS: user reported "Finally able to see the pin"; screenshot showed a
+purple TEST pin and Vitals' report at Silverpine Forest 61.4 / 74.7, four simulated
+participants (one observed plus three synthetic), rppvp and unknown layer.
+Final rendering status: FIXED AND OBSERVED, not awaiting another asset change.
+
+The final TEST report names the local reporter. It does not independently prove
+a freshly received remote-origin pin on both updated clients. Repeat A -> B and
+B -> A on 0.4.4 for that final acceptance evidence. Pan/zoom, resize, map reopening
+and expiry cleanup also remain explicit checks. See MAP_PIN_FIX_0.4.4.txt.
+
+Evidence identifiers from this chat (screenshots are not bundled in the repo):
+  Main initial report: codex-clipboard-4aa956c5-8622-4cac-bf45-982de2bbf324.png
+  Receipt log: codex-clipboard-da1bea99-4a00-465f-ad41-5f25140eb4c7.png
+  Map debug: codex-clipboard-92ce1e7d-2879-4f96-a225-f08f2d2ab550.png
+  Pincheck vs map: codex-clipboard-cfc725d6-7be9-4ebd-a64b-7bd39f875274.png
+  Visible demos: codex-clipboard-96fc8af6-5dbc-4d94-90c2-65dcbb45def7.png
+  Visible TEST: codex-clipboard-651b601f-71df-411c-bfd1-3c2ef9da553c.png
+
+4. SNAPSHOT EXPERIMENT (CLOSED)
+
+After user-confirmed client restart, unused slot 01 loaded BASELINE_01 once.
+Unused slot 02, rewritten during the instructed same session, loaded LIVE_02_A
+with the writer's matching timestamp. Rewriting the already-loaded slot to
+AFTER_LOAD_02 left the in-memory LIVE_02_A value and executions=1 unchanged.
+That mismatch was the expected negative control. Optional slot 03 was not run.
+No reusable streaming or reverse backend transport was established. Uninterrupted
+session was procedural, not separately instrumented. Exact writer hashes/times
+are preserved in probes/SNAPSHOT_RESULTS_2026-11-09.txt.
+
+5. OFFLINE VALIDATION ALREADY COMPLETED FOR 0.4.4
+
+tests/test_addon.py: syntax/model validation, audience, TTL and bounded store.
+tests/test_reporting.py: snapshot bounds/range/deduplication and report safeguards.
+tests/test_identity.py: renamed globals, TOC and binding dispatch.
+tests/test_guild_reports.py: two mocked Lua clients; report encoding/decoding,
+scope/test filtering, send failures, self-echo, UI and native map pin behavior.
+Map regression includes AREA_POI above exploration/fog. These checks passed
+during implementation. Documentation reconciliation does not rerun live tests.
+
+6. REMAINING BEFORE LAYER WORK
+
+See PRE_LAYER_TEST_CHECKLIST.txt for commands, expected outcomes and a result
+template. Priority: both-direction remote-origin pin/toast/details on 0.4.4;
+real keybinding/macro; main UI send/receive during combat; normal vs test flow;
+cooldown, duplicate, mute and expiry behavior; map navigation; test opt-out/reset.
+Capture other-ruleset/range-boundary/actual-PvP limitations explicitly if no
+eligible tester is available. Never convert an unrun check into a pass.
+
+Separate product backlog: automatic four-combatant heat, observer-area merging,
+city raid activation/authorization, cross-guild and unaffiliated-user delivery,
+external backend bridge, opponent attribution and layer coordination. None is
+established by simulated participants or by visible demo heat/raid/defense pins.

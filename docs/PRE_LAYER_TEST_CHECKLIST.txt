@@ -1,0 +1,110 @@
+CALL TO ARMS - REPORT ACCEPTANCE BEFORE LAYER COORDINATION
+0.4.4-alpha | November 9, 2026
+
+Current result: map artwork is visibly fixed; two-way diagnostic transport and
+main report receipt/details have live evidence. The checks below are still open
+unless a new result is recorded. See GUILD_REPORT_RESULTS_2026-11-09.txt.
+Two guildmates suffice for the core pass. Do not recruit six players for simulation.
+
+SETUP
+[ ] Both install the full CallToArms-0.4.4-alpha.zip MAIN addon. Disable the
+    separate diagnostic unless capturing transport troubleshooting. /reload
+    existing installations outside combat; restart for a first install.
+[ ] Capture /cta status on both: version, guild=true, messaging=true, matching
+    real ruleset/region, test=false. Note character, zone and client build.
+[ ] Configure Call to Arms -> Report PvP at my location in Key Bindings. Also
+    prepare an action-bar macro containing /cta report to test that entry point.
+[ ] Turn alerts on in /cta; /cta clear removes old demo/test clutter. It does
+    not reset cooldowns. Begin outside combat and remain in different zones.
+
+A. REMOTE REPORT ROUND TRIP - REQUIRED CORE CHECK
+[ ] BOTH /cta test on. A presses the bound action once. B captures the remote
+    receipt line and a small top-right [TEST] toast. No form/confirmation opens.
+[ ] B clicks that toast: details identify A, A's zone/coordinates, simulated
+    counts, incomplete sample and Layer: unknown. Record those coordinates.
+[ ] B clicks Show on map outside combat: A's zone opens with a visible purple
+    crossed-swords pin at that location. Hover and click show the same report.
+    This must be A's remote report, not B's own report or a /cta demo record.
+[ ] Wait >=10 seconds between sends by the same player and >=5 seconds between
+    test toasts. B sends via the macro; A repeats toast/details/pin verification.
+[ ] Each sender's own guild echo creates no second copy of that submission.
+
+B. NORMAL REPORT, THROTTLES AND NOTIFICATIONS - REQUIRED CORE CHECK
+[ ] BOTH /cta test off. Clear old displays as needed. A sends one ordinary
+    /cta report; B receives an unlabelled manual observer report with fight size
+    unknown. A flagged-player sample is never described as confirmed fighters.
+[ ] Repeat the normal command inside 120 seconds: no extra accepted submission.
+    After the interval, another submission works. Test cooldown is ten seconds;
+    repeat keypresses inside it must not flood packets or duplicate reports.
+[ ] A visible toast disappears after about ten seconds. Right-click dismisses;
+    the activity list and map still retain the unexpired report.
+[ ] Mute alerts on B and receive another eligible report: no toast, but activity
+    list/map update. Unmute for the next test. Respect normal 30-second toast
+    spacing; suppressed toasts must not suddenly replay as a queue.
+[ ] Wait five minutes from a submission without replacing it. The record no
+    longer appears as active in list/map; allow the 15-second cleanup sweep.
+    Inspect any open tooltip/details too and record stale UI as a defect.
+[ ] /cta clear removes retained displays without bypassing send cooldowns.
+
+C. MAIN ADDON DURING COMBAT - REQUIRED CORE CHECK
+[ ] Use a safe PvE encounter and simulated reports. With A actually in combat,
+    A presses the bound report action; B receives it. Repeat with B sending in
+    combat. Capture combat evidence at the send, not only an earlier status.
+[ ] Test receipt while the RECEIVER is actually in combat. Inspect the toast
+    and open/dismiss details. Record both players' combat state for each case.
+    A successful combat send alone does not establish this receive condition.
+[ ] In combat, Show on map should give the guarded message; open it after combat.
+    There must be no blocked-action popup or Lua error. Report any failing action
+    precisely rather than assuming the standalone probe proved this UI path.
+
+D. TEST ISOLATION AND MAP LIFECYCLE - REQUIRED CORE CHECK
+[ ] Receiver test mode OFF, sender ON: a fresh test report does not create a
+    toast, list item or pin on the receiver. Then opt in and send a fresh report
+    after cooldown; it arrives. No automatic replay of the discarded test.
+[ ] /cta test off removes test records/toast/details while normal reports remain.
+    /reload resets test=false and removes transient reports; verify /cta status.
+[ ] With an unexpired report, close/reopen, pan/zoom and resize the world map.
+    Its zone pin stays correctly located/visible; changing to another zone or
+    continent must not leave an incorrectly positioned pin. Zone-only pins are
+    expected; continent aggregation is not implemented.
+[ ] Normal/test pins retain readable tooltips and clicks after those transitions.
+    If artwork regresses, capture /cta mapdebug and /cta pincheck separately.
+    Expected map layer: PIN_FRAME_LEVEL_AREA_POI.
+
+E. ADDITIONAL COVERAGE - RECORD PASS, FAIL OR DEFERRED WITH A REASON
+[ ] Actual player-versus-player combat: repeat report send/receive and combat UI
+    checks when an opposing player is available. Simulation/PvE is not proof.
+[ ] Nearby sample: put a guildmate within a verifiable range and target them in
+    test mode. Expect observed/synthetic counts to reflect accessible units.
+    Repeat with flag changes in normal mode, duplicate unit tokens, outside
+    range and unavailable distance. Do not promise a complete census or assume
+    visibility proves that the distance API is available. Range-boundary checks
+    require a trustworthy in-game distance reference; otherwise mark unverified.
+[ ] Audience isolation: if eligible guild testers on different real rulesets
+    are available, verify their reports produce no UI across the mismatch.
+    Test faction/region mismatches only where the supported channel allows it;
+    otherwise retain offline evidence and the live coverage limitation.
+    Do not manually spoof local scope to turn this into a misleading live pass.
+[ ] Scope-change/missing-API and malformed/replay checks already have offline
+    coverage. Record whether live observation is possible; no requirement to
+    break the client or flood the guild to reproduce malformed traffic.
+
+DECISION BEFORE LAYER IMPLEMENTATION
+Complete A-D on the current release and fix any blocking delivery/UI defects.
+For E, record unavailable cases as deferred, with their effect on claims and
+public-release readiness. Four-player automatic heat and city/cross-guild/backend
+features are a separate backlog, not required to prove this manual report flow.
+Do not label layer coordination complete until a later explicit grouping test
+confirms mutual in-world visibility; message receipt and shared coordinates are
+insufficient. No stable layer ID or automatic transfer exists in this release.
+
+RESULT TEMPLATE (one entry per case/direction)
+Date/time and case:
+Result: PASS / FAIL / DEFERRED
+Main addon version and client build, both players:
+Sender -> receiver; zone, faction, detected ruleset/region:
+Sender combat / receiver combat at the tested action:
+Command or keybinding; test mode and mute state:
+Reporter's name, reported coordinates, timestamp to correlate the report:
+Sender acceptance / remote receipt / toast / details / visible remote pin:
+Screenshot or log reference; popup/Lua error; deviation or deferral reason:

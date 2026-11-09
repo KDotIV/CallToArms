@@ -1,0 +1,43 @@
+CALL TO ARMS 0.4.4-alpha - WORLD-MAP LAYER FIX VERIFIED
+November 9, 2026
+
+Outcome
+User screenshots now show three colored demo pins and a purple TEST report pin
+on the native world map. The visibility defect is resolved in this tested client.
+See GUILD_REPORT_RESULTS_2026-11-09.txt for evidence and remaining live checks.
+The final TEST screenshot is local-origin; fresh remote-origin pin rendering on
+both updated clients remains an end-to-end acceptance check, not an asset fix.
+
+Diagnosis
+Report hover targets and tooltips existed while artwork was invisible. Changing
+the texture did not fix it. The native line swords rendered in /cta pincheck,
+but the same renderer remained hidden on the map at DEFAULT level 2000.
+
+WorldMapMixin registers PIN_FRAME_LEVEL_MAP_EXPLORATION and PIN_FRAME_LEVEL_FOG_OF_WAR
+after DEFAULT through AddFrameLevel. Each added layer is above the prior maximum.
+DEFAULT was below map exploration/fog, not a safe foreground layer. The earlier
+mock tests incorrectly treated a numeric level of 2000 as sufficient.
+
+Correction
+Map.lua selects PIN_FRAME_LEVEL_AREA_POI through MapCanvasPinMixin. The manager
+assigns this layer above exploration/fog. No absolute frame number, tooltip-strata
+overlay or map-wide frame-level override is used. Native pin pooling, normalized
+positioning, line artwork and mouse handlers are preserved. /cta mapdebug reports
+the layer name. The regression test now asserts ordering above exploration/fog.
+
+Current artwork uses six foreground line strokes and six outline strokes.
+The old bundled TGA is unused by the renderer. No replacement asset is necessary.
+Pins belong to the matching zone map; continent/world aggregation is not built.
+
+Reproduction and remaining checks
+Both clients use the full CallToArms-0.4.4-alpha.zip. Reload existing installations
+outside combat to load changed Lua; restart on first install. /cta demo is a
+local-only rendering check. For report delivery, both /cta test on, send
+/cta report and verify the OTHER player's visible purple pin and matching details.
+Expected /cta mapdebug layer: PIN_FRAME_LEVEL_AREA_POI.
+Still check map close/reopen, zoom/pan, resize, zone changes and report expiry.
+No additional /cta pincheck pass is needed to establish the already-observed fix.
+
+Sources consulted (Blizzard UI source mirrored on Gethe's forever branch)
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_WorldMap/Blizzard_WorldMap.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_MapCanvas/MapCanvas_PinFrameLevelsManager.lua

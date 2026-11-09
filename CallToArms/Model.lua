@@ -11,6 +11,9 @@ local function text(v, limit)
     return v:gsub("|", ""):gsub("[%c]", " "):sub(1, limit)
 end
 A.CleanText = text
+function A.DisplayTitle(r)
+    return (r.test and "[TEST] " or r.demo and "[DEMO] " or "") .. r.title
+end
 
 function A.Validate(r, now, faction, ruleset)
     if type(r) ~= "table" or r.version ~= 1 then return nil, "Unsupported alert" end
@@ -26,6 +29,9 @@ function A.Validate(r, now, faction, ruleset)
         or not number(r.expiresAt, now + 1, now + 3600)
         or r.expiresAt <= r.updatedAt then return nil, "Invalid location or time" end
     if not number(r.count, 0, 1000) or r.count % 1 ~= 0 then return nil, "Invalid count" end
+    for _, field in ipairs({"observedCount", "unknownRange", "syntheticCount"}) do
+        if r[field] ~= nil and (not number(r[field], 0, 128) or r[field] % 1 ~= 0) then return nil, "Invalid snapshot summary" end
+    end
     if r.kind == "heat" and r.count < 4 then return nil, "Below heat threshold" end
     if r.kind == "heat" and r.countUnknown then return nil, "Unknown heat count" end
     -- The authenticated adapter/backend resolves city exceptions and authorization.
@@ -38,7 +44,9 @@ function A.Validate(r, now, faction, ruleset)
         title = text(r.title, 72), reporter = text(r.reporter, 64),
         opposition = text(r.opposition, 64), note = text(r.note, 160),
         estimated = r.estimated == true, demo = r.demo == true,
-        countUnknown = r.kind == "report" or r.countUnknown == true,
+        test = r.test == true,
+        observedCount = r.observedCount, unknownRange = r.unknownRange, syntheticCount = r.syntheticCount,
+        countUnknown = (r.kind == "report" and not r.test) or r.countUnknown == true,
     }
 end
 
@@ -52,6 +60,7 @@ end
 
 function A.Receive(r)
     if not A.db then return false, "Not initialized" end
+    if type(r) == "table" and r.test == true and not A.testMode then return false, "Test mode disabled" end
     local now = GetServerTime()
     local clean, reason = A.Validate(r, now, UnitFactionGroup("player"), A.db.ruleset)
     if not clean then return false, reason end

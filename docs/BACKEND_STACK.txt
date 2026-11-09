@@ -1,0 +1,48 @@
+CALL TO ARMS - BACKEND LANGUAGE AND TRANSPORT DECISION
+November 9, 2026 | Current addon 0.4.4-alpha
+
+Recommend C# with ASP.NET Core when a backend is needed. The owner is proficient
+in C#; the Lua addon does not require a Lua server. A versioned data contract
+separates the implementations. Python or Go offers no demonstrated advantage
+for this workload that warrants changing languages now.
+
+Current delivery is entirely in game: /cta report -> GUILD addon message ->
+CHAT_MSG_ADDON -> matching clients' UI. Two-way diagnostic delivery and main
+report receipt have been observed. See GUILD_REPORT_RESULTS_2026-11-09.txt for
+the exact evidence and remaining acceptance checks. No service is required for
+this guild path, and no C# backend/relay is active in this repository.
+
+WoW's sandboxed Lua is not a general-purpose Lua runtime with arbitrary HTTP,
+WebSocket or file-polling libraries. Changing the backend language does not
+remove that boundary. The SetTransport Lua hook is not an external connection.
+Discord integration and bot/webhook experiments are deferred and removed from
+active testing. Do not provision a bot or expose credentials for the current MVP.
+
+The load-on-demand experiment observed a rewritten, preinstalled UNUSED slot on
+first load. An already-loaded slot did not refresh. This finite snapshot result
+does not establish an ongoing inbound stream or any outbound backend path.
+No external transport is selected. Revisit external ingestion/fan-out only after
+a supported bidirectional path is separately established; GUILD receipt alone
+does not prove that a desktop app or service can read/write those messages.
+
+Future C# design, once requirements and transport justify it (not implemented):
+* One ASP.NET Core service with versioned DTOs and bounded validation.
+* Authenticated community/organizer membership and report ingestion.
+* BackgroundService for bounded aggregation, expiry and delivery processing.
+* A relational database for durable membership and event state; provider undecided.
+* In-process transient state for a single-instance MVP; shared limits/deduplication
+  before scaling out. Add infrastructure only when measurements require it.
+* Durable delivery/outbox only where required; an in-memory queue is not durable.
+* Optional web-dashboard connectivity. SignalR would serve that dashboard, not
+  provide an HTTP/WebSocket API to WoW's addon sandbox.
+
+Aggregation must retain evidence class and avoid summing overlapping samples.
+Current guild packets contain counts, not participant identities or actual
+combat-action evidence; they cannot support verified distinct-fighter aggregation.
+See BACKEND_HANDOFF.txt for the existing wire format, Lua boundary, scope/privacy
+limits, proposed city-event requirements and implementation backlog.
+
+Previously consulted platform references:
+https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/overview
+https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services
+https://learn.microsoft.com/en-us/aspnet/core/signalr/

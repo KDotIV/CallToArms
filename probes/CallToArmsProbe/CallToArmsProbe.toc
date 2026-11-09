@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: Call to Arms - Diagnostics
+## Notes: Opt-in in-game guild messaging and finite snapshot diagnostics. No automatic sends.
+## Author: Call to Arms
+## Version: 0.3.0
+## SavedVariables: CallToArmsProbeDB
+SnapshotProbe.lua
+Probe.lua

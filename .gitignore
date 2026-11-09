@@ -3,3 +3,10 @@
 .venv/
 releases/
 
+
+bin/
+obj/
+probe-logs/
+.env
+.env.*
+*.user

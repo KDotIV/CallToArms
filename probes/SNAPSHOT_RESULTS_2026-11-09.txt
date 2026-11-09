@@ -1,0 +1,54 @@
+CALL TO ARMS - LIVE SNAPSHOT EXPERIMENT
+Date: November 9, 2026
+Outcome: FIRST-LOAD OBSERVED; ALREADY-LOADED SLOT DID NOT REFRESH
+
+Environment
+Installed client: E:\World of Warcraft\_forever_\Wow.exe
+Addon path: E:\World of Warcraft\_forever_\Interface\AddOns
+Diagnostics: CallToArmsProbe 0.2.0 and three preinstalled load-on-demand slots.
+Exact client version/build/interface: not captured in supplied screenshots.
+User confirmed restarting WoW before baseline. Subsequent steps were performed
+under instructions not to reload/relog; uninterrupted session was not separately
+instrumented. Evidence consists of user-supplied screenshots and writer output.
+
+A. Baseline (slot 01)
+wasLoaded=false; LoadAddOn returned true.
+actual=BASELINE_01; writtenUtc=baseline-fixture; executions=1.
+SNAPSHOT_RESULT MATCH; firstLoad=true.
+
+B. Updated unused slot (slot 02)
+Writer marker: LIVE_02_A
+Writer UTC: 2026-11-09T16:49:44.1923671Z
+Writer SHA256: BE395359E1F0E3C3FA4232613947F5B12939CA2BAE2905F3A089F44590EB8148
+Screenshot: wasLoaded=false; LoadAddOn returned true.
+actual=LIVE_02_A; writtenUtc exactly matches writer UTC; executions=1.
+SNAPSHOT_RESULT MATCH; firstLoad=true.
+Updated contents were observed at first load during the instructed live session.
+
+C. Rewrite already-loaded slot (slot 02)
+Writer marker: AFTER_LOAD_02
+Writer UTC: 2026-11-09T16:51:10.3283800Z
+Writer SHA256: F3C5316E0884463A09446170DE2EBCB0EDC6423C9351FF9C7C21C6C4D390F225
+Screenshot: wasLoaded=true; LoadAddOn returned true.
+actual remained LIVE_02_A; writtenUtc remained 2026-11-09T16:49:44.1923671Z.
+executions remained 1.
+SNAPSHOT_RESULT MISMATCH; firstLoad=false.
+This MISMATCH is the expected successful negative control: no refresh occurred.
+
+D. Optional slot 03 confirmation
+NOT RUN; unnecessary after the clear baseline, positive trial and negative control.
+
+Conclusion and scope
+This trial supports finite, preinstalled, single-use snapshot slots on the tested
+client. It does not establish reusable loading, unlimited streaming, newly created
+folder discovery, reverse transport, or behavior across other/future client builds.
+An API success return alone does not mean file contents were re-executed.
+Experiment closed. Subsequent in-game guild messaging verified separate-player
+delivery, including sends during PvE combat; see RESULTS.txt and
+../docs/GUILD_REPORT_RESULTS_2026-11-09.txt for those later findings and limits.
+No chat or addon messages were sent during the snapshot experiment itself.
+
+The repository baseline fixtures were unchanged. At the end of the trial,
+installed slot 02 contained AFTER_LOAD_02 on disk while that UI session retained
+LIVE_02_A in memory. This records the trial state, not the current client state.
+To repeat later, restore baseline fixtures while WoW is closed and restart.

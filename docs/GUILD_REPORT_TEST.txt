@@ -1,0 +1,130 @@
+CALL TO ARMS 0.4.4-alpha - LIVE GUILD REPORT TEST
+November 9, 2026
+
+Current status
+Live evidence now confirms two-way diagnostic GUILD delivery, main report
+receipt/details, and visible demo/TEST map pins after the 0.4.4 layer fix.
+This guide describes expected test behavior; it is not a claim that every step
+has passed in WoW. See GUILD_REPORT_RESULTS_2026-11-09.txt for observed evidence
+and PRE_LAYER_TEST_CHECKLIST.txt for the remaining acceptance pass before layers.
+Fresh remote-origin pin/toast tests on both updated clients are still required.
+Standalone probe sends during PvE combat do not prove the main UI combat path.
+
+Install
+Both players install the CallToArms folder from CallToArms-0.4.4-alpha.zip into
+the active client's Interface/AddOns folder. This is the MAIN addon, not the
+CallToArmsProbe diagnostic. It requires no external libraries or service.
+Restart WoW after first installation; enable Call to Arms. The separate
+CallToArmsProbe can be disabled for this test. Target interface: 16001.
+
+Scope first
+Run /cta status on both clients. Expect guild=true, messaging=true, the actual
+ruleset, the same region, and test=false. Scope uses C_GameRules.IsGameRuleActive
+with Enum.GameRule.HardcoreRuleset, RPRuleset and PvPRuleset, plus GetCurrentRegion.
+If any required API/enum/value is missing, networking is disabled. Do not manually
+override an unknown ruleset. Send the status output for diagnosis.
+Normal, PvP, RP, RP-PvP and Hardcore remain distinct. Old saved ruleset selections
+are not authoritative; /cta ruleset overrides are disabled for networking.
+Every received packet must match the receiver's detected region/ruleset/faction.
+Guild is the current delivery channel, not a faction-wide or cross-guild network.
+GUILD is a broadcast channel: the underlying packet can reach guild members on
+other rulesets, but this addon discards it before showing any report or pin.
+This filtering is not confidentiality from other guild members running other code.
+Audience fields are filtering, not cryptographic authentication of guild members.
+
+Bind /cta report
+In WoW Key Bindings, find Call to Arms -> Report PvP at my location and bind it.
+Alternatively create a macro containing exactly:
+  /cta report
+Place it on an action-bar slot with an existing keybinding.
+Either path invokes the same one-action report function, with no confirmation UI.
+Configure bindings outside combat; then test the bound action during combat.
+
+Simulated PvP (two players are enough; they can be in different zones)
+Both players run:
+  /cta test on
+Player A presses the report binding (or types /cta report).
+Both should see a small top-right [TEST] Simulated PvP report toast. Player B
+also gets a 'Guild report received from ...' line. Sender API acceptance alone
+does not prove Player B received it.
+Click the toast: details show reporter, zone/coordinates, simulated participant
+count, observed/synthetic counts, ruleset and an explicit unknown layer.
+Click Show on map outside combat: the map selects the REPORTER'S zone and shows
+a purple crossed-swords test pin. Hover/click it to see the [TEST] details.
+Pins currently appear on the matching zone map, not on continent/world zooms.
+
+Wait at least 10 seconds; Player B sends a report. Verify receipt on Player A.
+Key-repeat inside the cooldown must not send another packet. A sender's guild
+echo must not create a duplicate pin/toast. Test toast spacing is five seconds;
+normal toast spacing is 30 seconds. The activity panel (/cta) lists retained
+reports even if a toast was throttled or dismissed. Existing mute settings apply.
+
+What simulation means
+The sender takes ONE bounded snapshot of accessible target/targettarget,
+mouseover/focus, party/raid and nameplate units with a readable player identity
+and verified distance <=100yd. In test mode the reporter is included at distance
+zero and unflagged observable players can be sampled. Actual flags are retained
+in the local snapshot; an independent simulatedCombat field marks the fixture.
+If fewer than four players are observed, synthetic participant counts fill to
+four. No nonexistent character is identified as a real PvPer. Example: reporter
+alone -> 1 observed + 3 synthetic; reporter and nearby guildmate -> 2 + 2.
+Unknown/out-of-range units are never claimed to be within 100yd. Coverage is
+always incomplete; this is not a guaranteed census or a real combat detector.
+No WoW combat flags, PvP flags, protected state, or combat-log events are modified.
+Only snapshot counts travel over the wire; observed names/GUIDs stay local in
+the transient snapshot. Test titles/counts/notes are reconstructed on receipt.
+
+Test isolation and cleanup
+Test mode is session-only and resets OFF on reload/login. Both sender and receiver
+must opt in. Clients with test mode off ignore test packets. All simulated
+records stay kind=report; they do not enter production heat aggregation or create
+city-raid authorization. Distinct purple pins and [TEST] labels remain visible.
+Run /cta test off to remove simulated records and hide their toast/details.
+This does not remove normal reports. /cta clear clears the local report display
+but does not reset send cooldowns. Reports expire after five minutes.
+
+Real manual reports
+With test mode off, /cta report sends a manual observer report to guild members
+on the matching scope. Fight size stays unknown. Flagged nearby players are NOT
+automatically counted as fighters. These use a 120-second send cooldown; failed
+attempts have a five-second debounce and no automatic retry. Test sends use a
+separate 10-second cooldown, so testing does not consume the normal cooldown.
+The legacy defense composer and raid/heat records are not supported by this
+guild packet format. /cta demo stays a local UI preview and never broadcasts.
+
+Layers and arriving at the fight
+Guild-message delivery does not establish that players share a world layer.
+This version does not know a reliable numeric layer ID or move anyone between
+layers. Details explicitly show Layer: unknown and the reporter's character.
+Coordinate a group invite with the reporter, then follow any world-refresh UI
+provided by Blizzard and verify that you can see each other in the zone.
+Grouping and coordinates alone are not a promise of immediate co-location.
+No automated invites, whispers, world refresh, or inferred layer labels are used.
+Layer identity and guided group coordination remain a separate future feature.
+
+Lightweight protocol and controls
+Prefix CTA_REPORT1; GUILD route only; one <=255-byte tab-delimited packet per
+report. No chunks, compression, polling, background scan or retransmission.
+Fields: version, R/T mode, nonce, timestamp, mapID, x*10000, y*10000, faction H/A,
+ruleset, observed count, unknown-range count, synthetic count, region.
+Nonce is namespaced by the sender supplied by WoW. No payload reporter name is
+trusted. Strict field/count/location/time checks run before insertion. The store
+is bounded to 64 records; receiver per-sender cooldowns and a bounded global
+message budget limit bursts. Malformed/secret/wrong-route/wrong-scope packets are
+ignored. Area-based aggregation/deduplication across observers is not implemented.
+Do not interpret addonOutgoingRestricted=true alone as failure; actual send
+return codes and remote receipt determine this trial's result.
+
+Offline validation
+  python tests/test_addon.py
+  python tests/test_reporting.py
+  python tests/test_identity.py
+  python tests/test_guild_reports.py
+Development-only dependency: lupa. Two mocked clients exercise the real report,
+transport, model, toast/details and map code. They do not establish real-client
+security, rendering or PvP behavior. Record those results during the live test.
+
+References inspected
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/GameRulesDocumentation.lua
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatConstantsDocumentation.lua
+https://worldofwarcraft.blizzard.com/en-us/news/24302070

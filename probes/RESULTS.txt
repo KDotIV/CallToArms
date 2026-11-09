@@ -1,0 +1,45 @@
+CALL TO ARMS - IN-GAME MESSAGE TEST RESULTS
+November 9, 2026 | Diagnostics 0.3.0
+State: TWO-WAY GUILD DELIVERY OBSERVED, INCLUDING SENDS DURING PvE COMBAT
+
+Evidence: user screenshots and corrected attribution of the two clients.
+Players: Vitals Shienx and Profcatface Meowmers; same guild/faction, different
+zones per user. Exact client build was not captured for both at every probe step;
+the later main-addon session logged 1.60.1 build 70862 / interface 16001.
+
+Baseline: playerA03 and playerB03 markers received across clients.
+Combat A -> B: Vitals sent combatA01 with combat=true; Profcatface received
+CHAT_MSG_ADDON containing that ID and META sender=Vitals Shienx.
+Combat B -> A: Profcatface sent combatb01 with combat=true; Vitals received
+CHAT_MSG_ADDON containing that ID and META sender=Profcatface Meowmers.
+Prefix=CTAPROBE; route=GUILD. Each direction has remote-receipt evidence;
+sender result=0 or a sender's own echo alone was not treated as a pass.
+
+Combat status also showed chatLockdown=false, addonOutgoingRestricted=true.
+The latter did not prevent these tested deliveries. Receiver combat state at
+the receive instant was not independently recorded. Actual PvP was not tested.
+
+Earlier /ctaprobe status hit a blocked-action popup while querying the restricted
+Discord integration. Those calls were removed. The subsequent in-game-only
+tests had no reported popups. This probe does not verify main report UI actions,
+map opening in combat, all client builds or every possible restriction state.
+
+Combat evidence identifiers in this chat (images not bundled):
+  A send: codex-clipboard-0986f0fc-deb0-4a87-9764-10957a32f606.png
+  B receives A: codex-clipboard-440bbd50-4c36-497c-94ea-62ba834c0b0d.png
+  A receives B: codex-clipboard-77d4af1c-d4af-4216-9cd4-c860cf737b96.png
+  B send: codex-clipboard-e4825e9e-b46e-4552-bd3d-6b16d19d9751.png
+
+Limits: GUILD only; not cross-guild/faction-wide delivery, not backend transport,
+not proof of different layers or of co-location. No PvP detection is performed.
+Main report results: ../docs/GUILD_REPORT_RESULTS_2026-11-09.txt.
+Remaining main-addon acceptance: ../docs/PRE_LAYER_TEST_CHECKLIST.txt.
+
+Snapshot experiment is closed: unused-slot first-load update observed; an
+already-loaded slot retained old contents. Exact evidence is preserved in
+SNAPSHOT_RESULTS_2026-11-09.txt; no additional slot trial is needed.
+
+Future retest capture (record separately, do not overwrite the evidence above):
+Date/time UTC; both versions/builds; zone/scope; sender/receiver combat states;
+new unique probe ID; SEND_ATTEMPT result; remote RECEIVED and META; error/popup;
+PASS/FAIL/DEFERRED and screenshot or /ctaprobe export reference.

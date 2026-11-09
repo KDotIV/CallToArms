@@ -1,0 +1,114 @@
+CALL TO ARMS - LOAD-ON-DEMAND SNAPSHOT EXPERIMENT (0.2.0)
+November 9, 2026
+
+Question
+Does this WoW build read a changed Snapshot.lua from a preinstalled, UNUSED
+load-on-demand addon when it is first loaded, without /reload or relogging?
+This is a finite diagnostic, not an HTTP bridge or production transport.
+No second player, external service or main CallToArms addon is required.
+
+Installation (once, BEFORE the measured session)
+1. Copy probes/CallToArmsProbe and the THREE folders inside probes/SnapshotSlots
+   directly into your active client's Interface/AddOns directory. The release
+   CallToArmsProbe-0.2.0.zip contains these four top-level addon folders.
+   Do not put the SnapshotSlots parent folder inside AddOns.
+2. Confirm these paths (replace <AddOns> with your real installation):
+     <AddOns>/CallToArmsProbe/CallToArmsProbe.toc
+     <AddOns>/CallToArmsProbeSnapshot01/CallToArmsProbeSnapshot01.toc
+     <AddOns>/CallToArmsProbeSnapshot02/CallToArmsProbeSnapshot02.toc
+     <AddOns>/CallToArmsProbeSnapshot03/CallToArmsProbeSnapshot03.toc
+3. Fully exit/restart WoW after installation. Enable Call to Arms - Diagnostics
+   and all three CTA Probe - Snapshot slots. Target interface is 16001; record
+   actual GetBuildInfo() from the probe's LOADED log entry. A client mismatch is
+   a setup issue, not a caching result. Slot TOCs have LoadOnDemand: 1, no saved
+   variables, and no dependencies which would force another slot to load.
+4. Log in and stand outside combat. Stop any addon manager that might overwrite
+   these test files. From here through step D: NO /reload, logout/login, client
+   restart, addon disable/enable cycle, or changes to TOCs.
+
+PowerShell writer
+From the CallToArms repo root, set the installed AddOns path (example for this PC):
+  $ctaAddOns = 'E:\World of Warcraft\_forever_\Interface\AddOns'
+
+Write-Snapshot.ps1 changes only Snapshot.lua in one existing slot. It does not
+create addons, start WoW, download data, monitor files or send messages. It checks
+the slot/TOC and marker, atomically replaces the file, and prints absolute path,
+UTC write time and SHA256. Keep that output with the in-game export.
+Use the INSTALLED AddOns path, not the repository's SnapshotSlots folder.
+Markers are case-sensitive ASCII letters/digits/underscore/hyphen, max 48 chars.
+
+A. Initial state and baseline
+In WoW:
+  /ctaprobe snapshot status
+All slots must show loadedOrLoading=false and loadOnDemand=true; exists should
+be true where that API is available. Status does NOT load a slot.
+  /ctaprobe snapshot load 01 BASELINE_01
+Expected: MATCH, firstLoad=true, marker=BASELINE_01, executions=1.
+If this fails, stop and export. A failed baseline cannot establish file caching.
+
+B. Core experiment: update an unused slot AFTER login
+With WoW still running in the same session, run in PowerShell:
+  .\probes\Write-Snapshot.ps1 -AddOnsPath $ctaAddOns -Slot 2 -Marker LIVE_02_A
+Only after the script finishes successfully, run in WoW:
+  /ctaprobe snapshot load 02 LIVE_02_A
+
+Interpretation:
+* MATCH + firstLoad=true + actual=LIVE_02_A + executions=1, with the documented
+  after-login disk write and no intervening reload/relog: positive evidence for
+  reading updated contents on FIRST LOAD on THIS build.
+* MISMATCH + firstLoad=true + actual=BASELINE_02 after a verified installed-file
+  write: updated contents were not observed in this trial. Stop this approach.
+* Already loaded, missing addon/API, load error, absent payload, wrong directory,
+  accidental reload/relog, or uncertainty about order: INCONCLUSIVE. Export and
+  stop. Do not keep adding slots or turn this into an open-ended investigation.
+The addon reports MATCH/MISMATCH, not an automatic PASS: it cannot independently
+verify the companion's disk write or prove that you followed the session steps.
+
+C. Already-loaded negative control (only if B passed)
+While staying in the same session:
+  .\probes\Write-Snapshot.ps1 -AddOnsPath $ctaAddOns -Slot 2 -Marker AFTER_LOAD_02
+Then in WoW:
+  /ctaprobe snapshot load 02 AFTER_LOAD_02
+Expected: MISMATCH, firstLoad=false, actual=LIVE_02_A, executions still 1.
+The explicit second LoadAddOn call is intentional: the old value is not cleared
+or replaced by the diagnostic code. This demonstrates why slots cannot be reused.
+An unexpected result is not automatically a reusable bridge; export and stop.
+
+D. One optional confirmation (only if B and C behaved as expected)
+  .\probes\Write-Snapshot.ps1 -AddOnsPath $ctaAddOns -Slot 3 -Marker LIVE_03_A
+In WoW:
+  /ctaprobe snapshot load 03 LIVE_03_A
+Expected: MATCH, firstLoad=true, actual=LIVE_03_A, executions=1.
+Then:
+  /ctaprobe export
+Copy the complete log and save it with the writer output. The probe keeps 200
+lines; leave metadata watch off during this experiment. Save logs BEFORE any
+reload; SavedVariables are only flushed later on normal logout/reload. Record
+the observed result in RESULTS.txt. No live result is inferred from unit tests.
+
+Stop rule and next step
+One clean baseline and first-load trial are enough to reject or mark this path
+inconclusive. No repeated workaround hunt. If it fails/is inconclusive, move to
+the existing in-game /ctaprobe addon <id> control with your second player to test
+C_ChatInfo.SendAddonMessage -> CHAT_MSG_ADDON between guild members.
+Snapshot commands themselves never send chat or addon messages.
+Even a positive result establishes only finite first-load slots, not unlimited
+streaming, reverse transport, bot relay, faction-wide delivery or future support.
+
+Reset/cleanup
+/ctaprobe clear clears LOGS only; it does not unload slots or refresh snapshots.
+For a later deliberate new trial, restore the three baseline slot folders from
+the repo/release while WoW is closed, then restart. Keep source fixtures unchanged.
+To remove this experiment, close WoW and remove only the three snapshot folders
+and (if no longer wanted) CallToArmsProbe. The main CallToArms addon is separate.
+
+Offline validation (Python + development-only lupa; PowerShell required)
+  python probes/tests/test_probe.py
+  python probes/tests/test_snapshots.py
+Tests cover Lua 5.1 execution, no automatic loading, command validation, stale
+vs updated payloads, already-loaded control, missing APIs/errors, legacy API
+fallback, and writer output/invalid-input refusal in temporary directories.
+Mocks deliberately model loading behavior; they cannot prove WoW's caching policy.
+
+API reference (Blizzard-generated API definitions mirrored in UI source)
+https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/AddOnsDocumentation.lua

@@ -1,5 +1,5 @@
 local name, A = ...
-function A.Print(message) print("|cffedbf69Forever PvP:|r " .. message) end
+function A.Print(message) print("|cffedbf69Call to Arms:|r " .. message) end
 
 function A.Changed()
     A.RefreshUI(); A.RefreshMap()
@@ -14,9 +14,23 @@ end
 function A.Notify(r)
     if A.db.muted then return end
     local now = GetTime()
-    if A.lastNotice and now - A.lastNotice < 30 then return end
-    A.lastNotice = now
+    local field = r.test and "lastTestNotice" or "lastNotice"
+    if A[field] and now - A[field] < (r.test and 5 or 30) then return end
+    A[field] = now
     A.ShowToast(r)
+end
+
+function A.SetTestMode(enabled)
+    A.testMode = enabled == true
+    if not A.testMode then
+        for id, r in pairs(A.records) do if r.test then A.records[id] = nil end end
+        for _, f in ipairs({A.toast or false, A.details or false}) do
+            if f and f.record and f.record.test then f:Hide() end
+        end
+    end
+    A.Changed()
+    A.Print(A.testMode and "TEST MODE ON for this session. /cta report sends simulated guild reports."
+        or "Test mode off; simulated reports cleared and incoming tests ignored.")
 end
 
 function A.SubmitDefense(count, opposition, note)
@@ -70,15 +84,19 @@ end
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("GAME_RULES_CHANGED")
 events:SetScript("OnEvent", function(_, event, addon)
     if event == "ADDON_LOADED" and addon == name then
-        if type(ForeverPVPDB) ~= "table" then ForeverPVPDB = {} end
-        A.db = ForeverPVPDB
+        if type(CallToArmsDB) ~= "table" then CallToArmsDB = {} end
+        A.db = CallToArmsDB
         if A.db.ruleset ~= "pvp" and A.db.ruleset ~= "normal" and A.db.ruleset ~= "rp" and A.db.ruleset ~= "rppvp" then A.db.ruleset = "pvp" end
         A.db.muted = A.db.muted == true
         if type(A.db.lastSubmit) ~= "number" or A.db.lastSubmit ~= A.db.lastSubmit or A.db.lastSubmit > GetServerTime() then A.db.lastSubmit = 0 end
-        -- Adapter boundary only: no HTTP client, Discord token, or automatic chat parser.
-        ForeverPVP = {
+        -- Guild packets use a narrow versioned protocol, never ordinary chat.
+        A.testMode = false
+        if A.RefreshScope then A.RefreshScope() end
+        if A.InitGuildTransport then A.InitGuildTransport() end
+        CallToArms = {
             Report = A.RunReport,
             Receive = A.Receive,
             SetTransport = function(send)
@@ -87,26 +105,32 @@ events:SetScript("OnEvent", function(_, event, addon)
             end,
             Version = 1,
         }
-        SLASH_FOREVERPVP1 = "/fwp"
-        SLASH_FOREVERCTA1 = "/cta"
-        BINDING_HEADER_FOREVERPVP = "Forever PvP"
-        BINDING_NAME_FOREVERPVP_REPORT = "Report PvP at my location"
-        SlashCmdList.FOREVERCTA = function(command)
-            if command:lower():match("^%s*report%s*$") then A.RunReport()
-            else A.Print("Use /cta report to report PvP at your location.") end
-        end
-        SlashCmdList.FOREVERPVP = function(command)
+        SLASH_CALLTOARMS1 = "/cta"
+        BINDING_HEADER_CALLTOARMS = "Call to Arms"
+        BINDING_NAME_CALLTOARMS_REPORT = "Report PvP at my location"
+        SlashCmdList.CALLTOARMS = function(command)
             command = command:lower():match("^%s*(.-)%s*$")
-            if command == "demo" then A.Demo()
-            elseif command == "clear" then A.records = {}; A.Changed()
+            if command == "report" then A.RunReport()
+            elseif command == "test on" then A.SetTestMode(true)
+            elseif command == "test off" then A.SetTestMode(false)
+            elseif command == "status" then
+                if A.RefreshScope then A.RefreshScope() end
+                A.Print("0.4.4-alpha | guild=" .. tostring(IsInGuild()) .. " | messaging=" .. tostring(A.guildReady == true)
+                    .. " | ruleset=" .. (A.scopeRuleset or "UNKNOWN - network disabled")
+                    .. " | region=" .. tostring(A.scopeRegion) .. " | test=" .. tostring(A.testMode == true))
+            elseif command == "mapdebug" then A.MapDebug()
+            elseif command == "pincheck" then A.PinCheck()
+            elseif command == "demo" then A.Demo()
+            elseif command == "clear" then
+                A.records = {}; if A.toast then A.toast:Hide() end; if A.details then A.details:Hide() end; A.Changed()
             elseif command:match("^ruleset ") then
-                local rule = command:match("^ruleset (%w+)$")
-                if rule == "pvp" or rule == "normal" or rule == "rp" or rule == "rppvp" then
-                    A.db.ruleset = rule; A.records = {}; A.Changed(); A.Print("Ruleset: " .. rule)
-                else A.Print("Use /fwp ruleset pvp|normal|rp|rppvp") end
+                A.Print("Network rulesets are detected from the game; manual overrides are disabled. Use /cta status.")
             else A.BuildUI(); A.panel:SetShown(not A.panel:IsShown()) end
         end
+    elseif event == "GAME_RULES_CHANGED" then
+        if A.db and A.RefreshScope then A.RefreshScope() end
     elseif event == "PLAYER_LOGIN" or (event == "ADDON_LOADED" and addon == "Blizzard_WorldMap") then
+        if A.db and A.RefreshScope then A.RefreshScope() end
         A.AttachMap()
     end
 end)
